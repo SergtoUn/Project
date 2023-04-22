@@ -30,22 +30,20 @@ For this project, the following datasets were used:
 <p>The stage tables are created to load the data from S3 to Amazon Redshift. All the data is loaded via SQL COPY statement based on the parameters provided. </p>
 <p>The following stage tables are created:
 https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019 - the dataset from Kaggle that contains the results of 5 million games from November 2019;<br>
->Datasets created by me after getting the data from lichess API:
->- the games of all the players from the abovementioned Kaggle dataset played from November 2019 until March 2023. The data is received from Lichess API;
->- the publicly accessible data about all players from the Kaggle dataset. The data is received from Lichess API;
->- a small dataset with the data about all Lichess bot players. The data is received from Lichess API.<br>
+Datasets created by me after getting the data from lichess API:
+* the games of all the players from the abovementioned Kaggle dataset played from November 2019 until March 2023. The data is received from Lichess API;
+ the publicly accessible data about all players from the Kaggle dataset. The data is received from Lichess API;
+ a small dataset with the data about all Lichess bot players. The data is received from Lichess API.<br>
 >Testing subsets are available at **s3://chess-games-bucket/**. The project has been tested on the data from this bucket.
 </p>
 
 ### Fact and Dimension Tables
-<p> As the analytics' idea of the project is to understand the progress of the gamer in the games, the *fact* table is organized as the table with games' data (the tale is named '**games**'). It accumulates both the games from the Kaggle dataset and the the games received via API.
-The following *dimension* tables have been created:
-- **variants**: this table possesses variants of games with the corresponding codes used in the fact table. 17 game types (variants) are tracked there;
-- **results**: it has just 3 definite results - "white win", "black win" and "draw" (with stalemate also regarded as draw) - and the codes for them;
-- **players**: this table contains data about the players, including his/her first and last names, bio information which is optional, url of the data, player's country and location, whether the account is disabled or not, player's title, violation of TOS, all the ratings and player type (to track whether the player is a bot).
+The analytics idea of the project is to understand the progress of the games in games. So far, the fact table is **games**, and it contains all the information about the games played by a certain player both from the Kaggle dataset and from the datasets created from API responses.
+The following **dimension** tables have been created: 
+1. **variants** - this table possesses variants of games with the corresponding codes used in the fact table. 17 game types (variants) are tracked there;
+2. **results** - it has just 3 definite results - "white win", "black win" and "draw" (with stalemate also regarded as draw) - and the codes for them;
+3. **players** - this table contains data about the players, including his/her first and last names, bio information which is optional, url of the data, player's country and location, whether the account is disabled or not, player's title, violation of TOS, all the ratings and player type (to track whether the player is a bot).
 
-### The structure of the project
-<p>The final operator is the data quality operator, which is used to run checks on the data itself. The operator's main functionality is to receive one or more SQL based test cases along with the expected results and execute the tests. For each the test, the test result and expected result are checked and if there is no match, the operator raises an exception and the task retries and fails eventually.</p>
 
 ## The structure of the project
 
