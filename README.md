@@ -3,24 +3,23 @@
 ## Introduction
 
 <p>Chess still remains one of the most popular board games for the last several hundred years. Making progress in chess - just like any other game - has always been the the topic of great iterest among both chess amateurs and pros.</p>
-
 <p>With time though different chess variants emerged, both for joy and for education. Chess960, Hoardes, Three Checks etc. become relatively popular and are often discussed as a way to progress in chess for those who want to do it faster than the classical way.</p>
 
 <p>The goal of this current project is threefold.
 First, it was planned to gain expertise with Amazon Redshift in managing big enough datasets.
 Second, I've planned to practice working with the full cycle of ETL starting from API calls and finishing with DWH data.
 Third, I wanted to understand the approaches to create the framework for the analysis of chess variants and how these variants affect the performance in classical chess.
+The general idea is to compare the results of the players from the Kaggle dataset for November 2019 with the results of the following years. So far, only the games of the players from the original Kaggle dataset were collected. All the games are combined in one single table for partitions and analysis.
 </p>
-
-<p>The source data resides in S3 and needs to be processed in a data warehouse in Amazon Redshift. The source datasets consist of CSV files received from Kaggle and several datasets as per the responses from Lichess API.</p>
+<p>The source data resides in S3 and needs to be processed in a data warehouse in Amazon Redshift. The source datasets consist of CSV file downloaded from Kaggle and several datasets as per the responses from Lichess API saved as CSV files as well.</p>
 
 ## Datasets
 
 For this project, the following datasets were used:
 
->https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019 - the dataset from Kaggle that contains the results of 5 million games from November 2019;<br>
+>https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019 - the dataset from Kaggle that contains the results of 5 million games from November 2019. Originally the dataset was manually copied to S3 from Kaggle to process it correctly;<br>
 >Datasets created by me after getting the data from lichess API:
->- the games of all the players from the abovementioned Kaggle dataset played from November 2019 until March 2023. The data is received from Lichess API;
+>- publicly accessible data about the games of all the players from the abovementioned Kaggle dataset played from November 2019 until March 2023. The data is received from Lichess API;
 >- the publicly accessible data about all players from the Kaggle dataset. The data is received from Lichess API;
 >- a small dataset with the data about all Lichess bot players. The data is received from Lichess API.<br>
 >Testing subsets are available at **s3://chess-games-bucket/**. The project has been tested on the data from this bucket.
@@ -28,14 +27,11 @@ For this project, the following datasets were used:
 
 ### Stage tables
 <p>The stage tables are created to load the data from S3 to Amazon Redshift. All the data is loaded via SQL COPY statement based on the parameters provided. </p>
-<p>The following stage tables are created:
-https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019 - the dataset from Kaggle that contains the results of 5 million games from November 2019;<br>
-Datasets created by me after getting the data from lichess API:
-* the games of all the players from the abovementioned Kaggle dataset played from November 2019 until March 2023. The data is received from Lichess API;
- the publicly accessible data about all players from the Kaggle dataset. The data is received from Lichess API;
- a small dataset with the data about all Lichess bot players. The data is received from Lichess API.<br>
->Testing subsets are available at **s3://chess-games-bucket/**. The project has been tested on the data from this bucket.
-</p>
+The following stage tables are created:
+1. **staging_games2019_data** - this table is used to hold the data from the Kaggle dataset that contains the results of 5 million games from November 2019;
+2. **staging_players_games_data** - the table that holds publicly accessible data about the games of the players from Kaggle dataset;
+3. **staging_players** - this is the table that holds the data about the players derived from API calls to Lichess;
+4. **staging_bots** - the table contains data bot players. This data is collected mainly to exclude bot players from the analysis. The secondary idea is to prepare the framework to analyze if the games with bot players are fruitful for the human palyer's performance.
 
 ### Fact and Dimension Tables
 The analytics idea of the project is to understand the progress of the games in games. So far, the fact table is **games**, and it contains all the information about the games played by a certain player both from the Kaggle dataset and from the datasets created from API responses.
@@ -43,7 +39,6 @@ The following **dimension** tables have been created:
 1. **variants** - this table possesses variants of games with the corresponding codes used in the fact table. 17 game types (variants) are tracked there;
 2. **results** - it has just 3 definite results - "white win", "black win" and "draw" (with stalemate also regarded as draw) - and the codes for them;
 3. **players** - this table contains data about the players, including his/her first and last names, bio information which is optional, url of the data, player's country and location, whether the account is disabled or not, player's title, violation of TOS, all the ratings and player type (to track whether the player is a bot).
-
 
 ## The structure of the project
 
@@ -65,6 +60,15 @@ Preliminary steps:
 - create datasets via get_data.py.
 Project steps:
 1. Edit *dwh.cfg* file, adding *key* and *secret*;
+2. Run *AWS.py* to create the cluster, roles, and to connections;
+3. run *create_tables.py* to create data schema;
+4. run *etl.py* to copy data to staging tables and to insert data into data warehouse;
+5. Run *clean_up_resources.py* to clean up the resources upon completion.
+
+## Data Quality Checks
+
+In order to test correctness of the data quality the following checks are performed:
+1. Check if the staging table 
 2. Run *AWS.py* to create the cluster, roles, and to connections;
 3. run *create_tables.py* to create data schema;
 4. run *etl.py* to copy data to staging tables and to insert data into data warehouse;
