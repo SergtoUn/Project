@@ -13,7 +13,7 @@ import json
 from io import StringIO
 import logging
 import time
-#import log_setup
+import log_setup
 import tenacity 
 from tenacity import retry, stop_after_attempt, stop_after_delay
 
@@ -356,7 +356,7 @@ def preprocess_games_data():
     '''
         Description: This function is used to optimize the data that is to be loaded to the DWH.
         
-        Purpose: Unnecessary messy columns are truncated. Unnecessary data is removed.
+        Purpose: Unnecessary messy columns are truncated. Unnecessary data are removed.
         
         Arguments:
             None

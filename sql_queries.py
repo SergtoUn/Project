@@ -773,8 +773,57 @@ FROM staging_players_games_data as sd
 ;
 """)
 
+DataQualityCheck1 = ("""
+SELECT 
+CASE
+    WHEN COUNT(DISTINCT site) > 0 THEN True
+    ELSE False
+    end::BOOLEAN
+FROM staging_games2019_data;
+""")
+
+DataQualityCheck2 = ("""
+SELECT 
+CASE
+    WHEN COUNT(DISTINCT id) > 0 THEN True
+    ELSE False
+    end::BOOLEAN
+FROM staging_players;
+""")
+
+DataQualityCheck3 = ("""
+SELECT 
+CASE
+    WHEN COUNT(DISTINCT id) > 0 THEN True
+    ELSE False
+    end::BOOLEAN
+FROM staging_players_games_data;
+""")
+
+DataQualityCheck4 = ("""
+SELECT 
+CASE
+    WHEN COUNT(DISTINCT playerId) > 0 THEN True
+    ELSE False
+    end::BOOLEAN
+FROM staging_bots;
+""")
+
+DataQualityCheck5 = ("""
+SELECT 
+CASE
+    WHEN min(variant) < 0 OR max(variant) > 17 THEN 'FAILED. Incorrect variant value'
+    WHEN min(result) < 0 OR MAX(result) > 2 THEN 'FAILED. Incorrect result value'
+    WHEN OR MIN(yr) < 2019 OR MAX(mth) > 12 OR MIN(mth) < 1 THEN 'FAILED. Incorrect date values'
+    ELSE 'PASSED'
+    end::text
+FROM   games
+""")
+
 # QUERY LISTS
 drop_table_queries = [staging_data2019_table_drop, staging_players_table_drop, staging_players_games_data_table_drop, staging_bots_table_drop,  gameTypes_table_drop, games_table_drop, results_table_drop, players_table_drop, playerTypes_table_drop]
 create_table_queries = [staging_games2019_data_table_create, staging_players_games_table_create, staging_bots_table_create, staging_players_table_create, results_table_create, games_table_create, player_table_create, playerTypes_table_create, gameTypes_table_create]
 copy_table_queries = [staging_games2019_data_copy, staging_players_games_data_copy, staging_bots_table_copy, staging_players_copy]
+staging_data_quality_checks = [DataQualityCheck1, DataQualityCheck2, DataQualityCheck3, DataQualityCheck4]
 insert_table_queries = [insert_playerTypes, games_table_staging_insert, insert_results, gameType_table_insert, insert_bots, insert_players_data, games_table_insert]
+insert_data_quality_check = DataQualityCheck5
