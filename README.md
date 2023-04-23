@@ -68,8 +68,8 @@ Project steps:
 ## Data Quality Checks
 
 In order to test correctness of the data quality the following checks are performed:
-1. Check if the staging table 
-2. Run *AWS.py* to create the cluster, roles, and to connections;
-3. run *create_tables.py* to create data schema;
-4. run *etl.py* to copy data to staging tables and to insert data into data warehouse;
-5. Run *clean_up_resources.py* to clean up the resources upon completion.
+1. Check if the staging table **staging_games2019_data** contains any data;
+2. Check if the staging table **staging_players_games_data** contains any data;
+3. Check if the staging table **staging_players** contains any data;
+4. Check if the staging table **staging_bots** contains any data;
+5. Check if the data input in the **games** table are within the presupposed ranges.
