@@ -25,7 +25,7 @@ For this project, the following datasets were used:
 >Testing subsets are available at **s3://chess-games-bucket/**. The project has been tested on the data from this bucket.
 
 
-### Stage tables
+## Stage tables
 <p>The stage tables are created to load the data from S3 to Amazon Redshift. All the data is loaded via SQL COPY statement based on the parameters provided. </p>
 The following stage tables are created:
 1. **staging_games2019_data** - this table is used to hold the data from the Kaggle dataset that contains the results of 5 million games from November 2019;
@@ -33,7 +33,7 @@ The following stage tables are created:
 3. **staging_players** - this is the table that holds the data about the players derived from API calls to Lichess;
 4. **staging_bots** - the table contains data bot players. This data is collected mainly to exclude bot players from the analysis. The secondary idea is to prepare the framework to analyze if the games with bot players are fruitful for the human palyer's performance.
 
-### Fact and Dimension Tables
+## Fact and Dimension Tables
 The analytics idea of the project is to understand the progress of the games in games. So far, the fact table is **games**, and it contains all the information about the games played by a certain player both from the Kaggle dataset and from the datasets created from API responses.
 The following **dimension** tables have been created: 
 1. **variants** - this table possesses variants of games with the corresponding codes used in the fact table. 17 game types (variants) are tracked there;
@@ -72,4 +72,17 @@ In order to test correctness of the data quality the following checks are perfor
 2. Check if the staging table **staging_players_games_data** contains any data;
 3. Check if the staging table **staging_players** contains any data;
 4. Check if the staging table **staging_bots** contains any data;
-5. Check if the data input in the **games** table are within the presupposed ranges.
+5. Check if the data input in the **games** table is within the presupposed ranges.
+
+## Logaical Approach to Work with Potential Challenges
+
+1. **The data was increased by 100x**. Unlike traditional databases, Redshift is designed to scale out by adding nodes to the cluster. Optimization comes from distribution styles of the columns over the clusters. So far, the following styles provide optimized performance:
+   - besides the primary Kaggle dataset, all other data about games come from API calls. Chess games are approximately evenly distributed over the months, so the distribution key for the **games** is month;
+   - the best key for the staging table **staging_players_games_data** is left to be automatically decided with the style **AUTO**;
+   - small tables that take part in most of the processing - **variants** and **results** - are copied over the clusters with distribution style **ALL**.
+2.  **The pipelines would be run on a daily basis by 7 am every day**. The project itself does not sort whether the data has been updated or daily we run all the same. Yet this can be sort out for **games** and **players** tables by either way, and the best solution is to be decided by the user:
+   - create its temporary duplicate; add data from the datasets to the existing staging table; update the temporary table with just the newly received data; remove all the data from the staging table and put the one from the temporary one. After it the data to the DWH is updates as per the dates of the games (just the newly played games ar added). This approach requires solid amount of space exploited by AWS Redshift, because just a monthly data can cross 30Gb amount. Thus making duplicates can be pricey. Also the datasets are created via API calls, and getting most of the data that is already in the database takes enourmous and increasing amounts of time worthless;
+   - daily the "folders" with datasets are updated, and with all the previous data removed and only newly received data left. So far it does not require significant changes in the DWH. Yet the get_data.py file needs to be  updated daily to receive just new games.
+3. **The database needed to be accessed by 100+ people.** This issue is not the limit in AWS Redshift as a cloud-based DWH. Concurrency scaling with up to 10 concurrency scaling clusters is available. Yet time- and resource-consuming activities like data updates are recommended to be performed during the time of minimum user activities. Also it is recommended to organize the users into the user groups.
+   Recent limits of AWS Redshift are available here: http://docs.aws.amazon.com/redshift/latest/mgmt/amazon-redshift-limits.html
+

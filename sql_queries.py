@@ -406,7 +406,7 @@ black_username   text,
 black_userid     text,
 black_rating     text,
 black_ratingDiff text
-)
+) distkey auto;
 """)
 
 # Staging table for the bots from CSV file
@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS variants(
 typeID           int IDENTITY (0,1) NOT NULL,
 enumeration      smallint,
 name             text
-)
+) distkey all;
 """)
 
 results_table_create = ("""
@@ -433,7 +433,7 @@ CREATE TABLE IF NOT EXISTS results(
 resultID         int IDENTITY (0,1) NOT NULL,
 resultCode       int,
 resultName       text
-)
+) distkey all;
 """)
 
 games_table_create = ("""
@@ -448,8 +448,8 @@ wRatingDiff      real,
 result           int,
 ECO              text,
 moves            VARCHAR(MAX),
-variant          int distkey,
-mth              smallint,
+variant          int,
+mth              smallint distkey,
 yr               smallint,
 PRIMARY KEY(gameId)
 ) sortkey AUTO;
