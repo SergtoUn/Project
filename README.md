@@ -27,7 +27,7 @@ For this project, the following datasets were used:
 ### Data Quantity of the Primary Dataset
 
 The primary dataset for this project is https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019. It's data were loaded into the stage table **staging_games2019_data**, it contains 5000995 records
- ![dataset!](dataset.png "dataset")
+ ![dataset](https://github.com/SergtoUn/Project-Chess-Games/blob/master/readme/dataset.png "dataset")
 
 ## Stage tables
 <p>The stage tables are created to load the data from S3 to Amazon Redshift. All the data is loaded via SQL COPY statement based on the parameters provided. </p>
@@ -74,9 +74,9 @@ Project steps:
 ### The testing query to show the result of the data model
 
 The following query is supposed to demonstrate the testingquery and its results to be used in the analysis
-![wins!](wins.png "wins")
+![wins](https://github.com/SergtoUn/Project-Chess-Games/blob/master/readme/wins.PNG "wins")
 The same fact table with the dimensions joined:
-![dimensions!](dimensions.png "dimensions")
+![dimensions](https://github.com/SergtoUn/Project-Chess-Games/blob/master/readme/dimensions.PNG "dimensions")
 
 ## Data Quality Checks
 
