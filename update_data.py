@@ -46,10 +46,10 @@ playersdata = "/playersdata/"
 
 def get_last_update_date():
     '''
-    Description: This function is used to get current date for data updates. Getting last Monday idea is taken from here: https://www.tutorialspoint.com/How-to-find-only-Monday-s-date-with-Python
+    Description: This function is used to get the date of the last data update. 
     
     
-    Purpose: The date is used to get current date in Unix epoch format. The date is inserted in API call to receive the most recent data updates.
+    Purpose: The date is used to get current date in Unix epoch format. The date is inserted in API call in process_api_call() function to receive the most recent data updates.
     
     Arguments:
         None.
@@ -58,26 +58,19 @@ def get_last_update_date():
         EPOCH_DATE: Date in Unix epoch format.
     
     '''
-    logging.message("Getting the current date/time in Unix epoch format...")
+    logging.message("Getting the date/time of the last update in Unix epoch format...")
     
     try:
         
         import datetime
         
-        # importing relativedelta, MO from dateutil
-        from dateutil.relativedelta import relativedelta, MO
-
-        # getting today's current local date
-        todayDate = datetime.date.today()
+        yesterday = datetime.date.today() - datetime.timedelta(days = 1)
         
-        # Pass MO(-2) as an argument to relativedelta to set weekday as Monday and (-2) signifies last week's Monday. (-2) is used because the file is run on Mondays, so (-1) will capture the actual date of update
-        lastMonday = todayDate + relativedelta(weekday=MO(-2))
-
-        updateDatetime = datetime.datetime.combine(lastMonday, 
+        updateDatetime = datetime.datetime.combine(yesterday, 
                           datetime.time(7, 0))
         
         # Getting epoch
-        EPOCH_DATE = int((updateDatetime).timestamp())
+        EPOCH_DATE = 1000 * int((updateDatetime).timestamp())
         
         return (EPOCH_DATE)
     

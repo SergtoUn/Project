@@ -93,15 +93,15 @@ In order to test correctness of the data quality the following checks are perfor
    - besides the primary Kaggle dataset, all other data about games come from API calls. Chess games are approximately evenly distributed over the months, so the distribution key for the **games** is month;
    - the best key for the staging table **staging_players_games_data** is left to be automatically decided with the style **AUTO**;
    - small tables that take part in most of the processing - **variants** and **results** - are copied over the clusters with distribution style **ALL**.
-2.  **The pipelines would be run on a daily basis by 7 am every day**. The project itself does not sort whether the data has been updated or daily we run all the same. Yet this can be sort out for **games** and **players** tables by either way, and the best solution is to be decided by the user:
+2.  **The pipelines would be run on a daily basis by 7 am every day**. The project itself does not sort whether the data has been updated or we run all the same daily. Yet this can be sort out for **games** and **players** tables by either way, and the best solution is to be decided by the user:
    - create its temporary duplicate; add data from the datasets to the existing staging table; update the temporary table with just the newly received data; remove all the data from the staging table and put the one from the temporary one. After it the data to the DWH is updates as per the dates of the games (just the newly played games ar added). This approach requires solid amount of space exploited by AWS Redshift, because just a monthly data can cross 30Gb amount. Thus making duplicates can be pricey. Also the datasets are created via API calls, and getting most of the data that is already in the database takes enourmous and increasing amounts of time worthless;
    - daily the "folders" with datasets are updated, and with all the previous data removed and only newly received data left. So far it does not require significant changes in the DWH. Yet the get_data.py file needs to be updated daily to receive just new games.
    This second variant requires the following steps set up:
    a. *Deletion of data*. Can be performed by setting lifecycle configuration for the elements. It can consider the data management policies regarding both data transition an data removal. Further information on this topic is available here: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html;
-   b. *Source updates*. The file to update the sources is update_data.py. It loads the data from lichess API to the corresponding "folders" inside the S3 bucket. The file is supposed to be started every Monday by the cron/job; 
-   c. *ETL from S3 to DWH*. It is performed by etl.py file inside the project. It should be run as per the cron schedule as well;
-   d. *Crontab*. Crontab is the file with the purpose to plan the execution of the task. The syntax to run the task, say, every Monday 7AM is 
-   `0 7 * * 1`
+   b. *Source updates*. The file to update the sources is update_data.py. It loads the data from lichess API to the corresponding "folders" inside the S3 bucket. The file is supposed to be started daily by the cron/job; 
+   c. *ETL from S3 to DWH*. It is performed by etl.py file inside the project. It should be run daily as per the cron schedule as well;
+   d. *Crontab*. Crontab is the file with the purpose to plan the execution of the task. The syntax to run the task daily 7AM is 
+   `0 7 * * *`
 
 3. **The database needed to be accessed by 100+ people.** This issue is not the limit in AWS Redshift as a cloud-based DWH. Concurrency scaling with up to 10 concurrency scaling clusters is available. Yet time- and resource-consuming activities like data updates are recommended to be performed during the time of minimum user activities. Also it is recommended to organize the users into the user groups.
    Recent limits of AWS Redshift are available here: http://docs.aws.amazon.com/redshift/latest/mgmt/amazon-redshift-limits.html
