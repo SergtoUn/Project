@@ -5,6 +5,7 @@ Created on Tue Mar 14 02:48:01 2023
 @author: Sergt
 """
 import configparser
+import psycopg2
 import boto3
 import requests
 import pandas as pd
@@ -25,7 +26,6 @@ SECRET                 = config.get('AWS','SECRET')
 BUCKETNAME             = config.get('S3','bucketname')
 BUCKETPATH             = ('s3://' + BUCKETNAME + '/')
 
-
 aws_pd = pd.DataFrame({"Param": ["KEY", "SECRET"],
                        "Value": [KEY, SECRET]
                        })
@@ -44,50 +44,76 @@ DbBucket = s3.Bucket(('{}').format(BUCKETNAME))
 playergames = "/playergames/"
 playersdata = "/playersdata/"
 
-def get_players():
+def get_last_update_date():
+    '''
+    Description: This function is used to get current date for data updates. Getting last Monday idea is taken from here: https://www.tutorialspoint.com/How-to-find-only-Monday-s-date-with-Python
+    
+    
+    Purpose: The date is used to get current date in Unix epoch format. The date is inserted in API call to receive the most recent data updates.
+    
+    Arguments:
+        None.
+        
+    Returns:
+        EPOCH_DATE: Date in Unix epoch format.
+    
+    '''
+    logging.message("Getting the current date/time in Unix epoch format...")
+    
+    try:
+        
+        import datetime
+        
+        # importing relativedelta, MO from dateutil
+        from dateutil.relativedelta import relativedelta, MO
+
+        # getting today's current local date
+        todayDate = datetime.date.today()
+        
+        # Pass MO(-2) as an argument to relativedelta to set weekday as Monday and (-2) signifies last week's Monday. (-2) is used because the file is run on Mondays, so (-1) will capture the actual date of update
+        lastMonday = todayDate + relativedelta(weekday=MO(-2))
+
+        updateDatetime = datetime.datetime.combine(lastMonday, 
+                          datetime.time(7, 0))
+        
+        # Getting epoch
+        EPOCH_DATE = int((updateDatetime).timestamp())
+        
+        return (EPOCH_DATE)
+    
+    except Exception as e:
+            
+        logging.exception(e)
+        
+def get_players(cur, conn):
     '''
     Description: This function is used to get the list of players from the dataset. put it in S3 bucket as a csv file. 
     
     Purpose: The function files created by this function in S3 are to be copied to Redshift staging table.
     
-    Details:
-        1. We get the usernames of the players from the dataset: 
-            - the players are taken from "Black" and "White" columns;
-            - data from both columns are appended into the single Pandas DataFrame column;
-            - duplicates are removed.
-        2. List of players is returned to the caller.
-        
     Arguments:
-        None.
+        cur: cursor
+        conn: connection to the database
         
     Returns:
         players: the list of players
     
     '''
-    print("Getting players from the dataset...")
-    '''
-    cur.execute('SELECT pl.username FROM players pl')
-    cur.fetchall()
-    '''
+    
+    
     try:
+        logging.message("Getting players from the dataset...")
         
-        logging.info("Collecting the players")
-        df = wr.s3.read_csv(path=('s3://{}/November2019.csv').format(BUCKETNAME),
-                            boto3_session=session,
-                            sep=',',
-                            na_values=[''], usecols=["White", "Black"])
-        players = df["White"].append(df["Black"])
-        players = players.drop_duplicates() # 385684 players
-        players = players.tolist()
+        cur.execute('SELECT pl.username FROM players pl;')
         
-        logging.info("The list of players is successfully collected...")
+        players = cur.fetchall()
         
         return(players)
     
     except Exception as e:
             
         logging.exception(e)
-        
+
 def get_players_games_api(players):
     
     '''
@@ -141,9 +167,12 @@ def process_api_call(url):
     '''
     
     try:
+        
+        EPOCH_DATE = get_last_update_date()
+        
         r = requests.get(
             url,
-            params={"since":1575158400000}, headers={"Accept": "application/x-ndjson"})
+            params={"since":EPOCH_DATE}, headers={"Accept": "application/x-ndjson"})
 
         if (r.status_code < 200) or (r.status_code > 299):
             logging.info("Status code is " + str(r.status_code))
@@ -170,9 +199,6 @@ def process_api_call(url):
         raise
         logging.exception(e)
         
-        
-
-
 def get_single_player_games_api(p):
     
     '''
@@ -285,6 +311,8 @@ def get_players_data(players):
         
         logging.info("Processing players' data...")
         
+        #myClient = lc.Client()
+
         df = pd.DataFrame()
         
         csv_buffer = StringIO()
@@ -308,8 +336,7 @@ def get_players_data(players):
             url = ("https://lichess.org/api/user/{}").format(str(p))
             
             player = process_api_call(url).content.decode("utf-8")
-            
-            
+                        
             MESSAGE = ("Player {} data is received and are being proccessed").format(str(p))
             logging.info(MESSAGE)
             
@@ -322,18 +349,20 @@ def get_players_data(players):
             
             df_temp["id"] = df_temp["id"].tolist()
             
-            
+            #print("df_temp" + str(df_temp))
             
         # 3. The response is added to the dataframe
             
+            
             df = df.append(df_temp, True)
             df = df.drop(df.columns[[0]], axis=1)
-            print(type(df["id"]))
+            
+            
             
             df["id"] = df["id"].tolist()
             df["id"].to_string(index=False)
             
-            print(df)
+            
             
             MESSAGE = ("Players' {} data have been appended").format(str(p))
             logging.info(MESSAGE)
@@ -368,7 +397,7 @@ def preprocess_games_data():
         
         if count > 0:
         
-            print(object_summary.key)
+            
         
             logging.info("Loading " + object_summary.key)
         
@@ -394,7 +423,10 @@ def main():
     config = configparser.ConfigParser()
     config.read('dwh.cfg')
     
-    pls = get_players()
+    conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
+    cur = conn.cursor()
+    
+    pls = get_players(cur, conn)
     
     get_players_games_api(pls)
     

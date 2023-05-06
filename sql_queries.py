@@ -25,6 +25,8 @@ staging_bots_table_drop = "DROP TABLE IF EXISTS staging_bots"
  
 gameTypes_table_drop = "DROP TABLE IF EXISTS variants"
 
+speed_table_drop = "DROP TABLE IF EXISTS speed"
+
 results_table_drop = "DROP TABLE IF EXISTS results"
  
 games_table_drop = "DROP TABLE IF EXISTS games"
@@ -406,7 +408,8 @@ black_username   text,
 black_userid     text,
 black_rating     text,
 black_ratingDiff text
-) distkey auto;
+) 
+DISTSTYLE AUTO;
 """)
 
 # Staging table for the bots from CSV file
@@ -425,7 +428,15 @@ CREATE TABLE IF NOT EXISTS variants(
 typeID           int IDENTITY (0,1) NOT NULL,
 enumeration      smallint,
 name             text
-) distkey all;
+) diststyle all;
+""")
+
+speed_table_create = ("""
+CREATE TABLE IF NOT EXISTS speed(
+typeID           int IDENTITY (0,1) NOT NULL,
+enumeration      smallint,
+name             text
+) diststyle all;
 """)
 
 results_table_create = ("""
@@ -433,7 +444,7 @@ CREATE TABLE IF NOT EXISTS results(
 resultID         int IDENTITY (0,1) NOT NULL,
 resultCode       int,
 resultName       text
-) distkey all;
+) diststyle all;
 """)
 
 games_table_create = ("""
@@ -449,10 +460,11 @@ result           int,
 ECO              text,
 moves            VARCHAR(MAX),
 variant          int,
+speed            int,
 mth              smallint distkey,
 yr               smallint,
 PRIMARY KEY(gameId)
-) sortkey AUTO;
+) SORTKEY AUTO;
 """)
 
 player_table_create = ("""CREATE TABLE IF NOT EXISTS players (
@@ -601,43 +613,52 @@ WHERE playerType IS NULL;
 
 gameType_table_insert = ("""
 INSERT INTO variants (enumeration, name)
+VALUES(0, 'standard');
+INSERT INTO variants (enumeration, name)
+VALUES(1, 'correspondence');
+INSERT INTO variants (enumeration, name)
+VALUES(2, 'chess960');
+INSERT INTO variants (enumeration, name)
+VALUES(3, 'crazyhouse');
+INSERT INTO variants (enumeration, name)
+VALUES(4, 'antichess');
+INSERT INTO variants (enumeration, name)
+VALUES(5, 'atomic');
+INSERT INTO variants (enumeration, name)
+VALUES(6, 'horde');
+INSERT INTO variants (enumeration, name)
+VALUES(7, 'kingOfTheHill');
+INSERT INTO variants (enumeration, name)
+VALUES(8, 'racingKings');
+INSERT INTO variants (enumeration, name)
+VALUES(9, 'threeCheck');
+INSERT INTO variants (enumeration, name)
+VALUES(10, 'puzzle');
+INSERT INTO variants (enumeration, name)
+VALUES(11, 'streak');
+INSERT INTO variants (enumeration, name)
+VALUES(12, 'storm');
+INSERT INTO variants (enumeration, name)
+VALUES(13, 'racer');
+INSERT INTO variants (enumeration, name)
+VALUES(14, 'other');
+""")
+
+speed_table_insert = ("""
+INSERT INTO speed (enumeration, name)
 VALUES(0, 'ultraBullet');
-INSERT INTO variants (enumeration, name)
+INSERT INTO speed (enumeration, name)
 VALUES(1, 'bullet');
-INSERT INTO variants (enumeration, name)
+INSERT INTO speed (enumeration, name)
 VALUES(2, 'blitz');
-INSERT INTO variants (enumeration, name)
+INSERT INTO speed (enumeration, name)
 VALUES(3, 'rapid');
-INSERT INTO variants (enumeration, name)
+INSERT INTO speed (enumeration, name)
 VALUES(4, 'classical');
-INSERT INTO variants (enumeration, name)
+INSERT INTO speed (enumeration, name)
 VALUES(5, 'correspondence');
-INSERT INTO variants (enumeration, name)
-VALUES(6, 'chess960');
-INSERT INTO variants (enumeration, name)
-VALUES(7, 'crazyhouse');
-INSERT INTO variants (enumeration, name)
-VALUES(8, 'antichess');
-INSERT INTO variants (enumeration, name)
-VALUES(9, 'atomic');
-INSERT INTO variants (enumeration, name)
-VALUES(10, 'horde');
-INSERT INTO variants (enumeration, name)
-VALUES(11, 'kingOfTheHill');
-INSERT INTO variants (enumeration, name)
-VALUES(12, 'racingKings');
-INSERT INTO variants (enumeration, name)
-VALUES(13, 'threeCheck');
-INSERT INTO variants (enumeration, name)
-VALUES(14, 'puzzle');
-INSERT INTO variants (enumeration, name)
-VALUES(15, 'streak');
-INSERT INTO variants (enumeration, name)
-VALUES(16, 'storm');
-INSERT INTO variants (enumeration, name)
-VALUES(17, 'racer');
-INSERT INTO variants (enumeration, name)
-VALUES(18, 'other');
+INSERT INTO speed (enumeration, name)
+VALUES(6, 'other');
 """)
 
 games_table_staging_insert = ("""
@@ -652,6 +673,7 @@ bRatingDiff,
 result,
 ECO,
 variant,
+speed,
 mth,
 yr
 )
@@ -692,6 +714,7 @@ CASE
     ELSE 18
     
     end::int AS variant,
+    0,
 extract('month' from CAST(sg.Gamedate AS timestamp)) as mth,
 extract('year' from CAST(sg.Gamedate AS timestamp)) as yr
 FROM staging_games2019_data as sg; 
@@ -708,6 +731,7 @@ bpRating,
 bRatingDiff, 
 moves,
 variant,
+speed,
 result,
 mth,
 yr
@@ -740,26 +764,31 @@ CASE
     end::int AS bRatingDiff,     
 sd.moves,
 CASE
-    WHEN sd.perf ILIKE '%ultrabullet%' THEN 0
-    WHEN sd.perf ILIKE '% bullet%' THEN 1
-    WHEN sd.perf ILIKE '%blitz%' THEN 2
-    WHEN sd.perf ILIKE '%rapid%' THEN 3
-    WHEN sd.perf ILIKE '%classical%' THEN 4
-    WHEN sd.perf ILIKE '%correspondence%' THEN 5
-    WHEN sd.perf ILIKE '%chess960%' THEN 6
-    WHEN sd.perf ILIKE '%crazyhouse%' THEN 7
-    WHEN sd.perf ILIKE '%antichess%' THEN 8
-    WHEN sd.perf ILIKE '%atomic%' THEN 9
-    WHEN sd.perf ILIKE '%horde%' THEN 10
-    WHEN sd.perf ILIKE '%kingofthehill%' THEN 11
-    WHEN sd.perf ILIKE '%racingkings%' THEN 12
-    WHEN sd.perf ILIKE '%threecheck%' THEN 13
-    WHEN sd.perf ILIKE '%puzzle%' THEN 14
-    WHEN sd.perf ILIKE '%streak%' THEN 15
-    WHEN sd.perf ILIKE '%storm%' THEN 16
-    WHEN sd.perf ILIKE '%racer%' THEN 17
-    ELSE 18
+    WHEN sd.variant ILIKE 'standard%' THEN 0
+    WHEN sd.variant ILIKE 'correspondence%' THEN 1
+    WHEN sd.variant ILIKE 'chess960%' THEN 2
+    WHEN sd.variant ILIKE 'crazyhouse%' THEN 3
+    WHEN sd.variant ILIKE 'antichess%' THEN 4
+    WHEN sd.variant ILIKE 'atomic%' THEN 5
+    WHEN sd.variant ILIKE 'horde%' THEN 6
+    WHEN sd.variant ILIKE 'kingofthehill%' THEN 7
+    WHEN sd.variant ILIKE 'racingkings%' THEN 8
+    WHEN sd.variant ILIKE 'threecheck%' THEN 9
+    WHEN sd.variant ILIKE 'puzzle%' THEN 10
+    WHEN sd.variant ILIKE 'streak%' THEN 11
+    WHEN sd.variant ILIKE 'storm%' THEN 12
+    WHEN sd.variant ILIKE 'racer%' THEN 13
+    ELSE 14
     end::int AS variant,
+CASE
+    WHEN sd.speed ILIKE '%ultrabullet%' THEN 0
+    WHEN sd.speed ILIKE 'bullet%' THEN 1
+    WHEN sd.speed ILIKE 'blitz%' THEN 2
+    WHEN sd.speed ILIKE 'rapid%' THEN 3
+    WHEN sd.speed ILIKE 'classical%' THEN 4
+    WHEN sd.speed ILIKE 'correspondence%' THEN 5
+    ELSE 6
+    end::int AS speed,
 CASE
     WHEN sd.winner LIKE 'white' THEN 1
     WHEN sd.winner LIKE 'black' THEN 0
@@ -814,16 +843,16 @@ SELECT
 CASE
     WHEN min(variant) < 0 OR max(variant) > 17 THEN 'FAILED. Incorrect variant value'
     WHEN min(result) < 0 OR MAX(result) > 2 THEN 'FAILED. Incorrect result value'
-    WHEN OR MIN(yr) < 2019 OR MAX(mth) > 12 OR MIN(mth) < 1 THEN 'FAILED. Incorrect date values'
+    WHEN MIN(yr) < 2019 OR MAX(mth) > 12 OR MIN(mth) < 1 THEN 'FAILED. Incorrect date values'
     ELSE 'PASSED'
     end::text
 FROM   games
 """)
 
 # QUERY LISTS
-drop_table_queries = [staging_data2019_table_drop, staging_players_table_drop, staging_players_games_data_table_drop, staging_bots_table_drop,  gameTypes_table_drop, games_table_drop, results_table_drop, players_table_drop, playerTypes_table_drop]
-create_table_queries = [staging_games2019_data_table_create, staging_players_games_table_create, staging_bots_table_create, staging_players_table_create, results_table_create, games_table_create, player_table_create, playerTypes_table_create, gameTypes_table_create]
+drop_table_queries = [staging_data2019_table_drop, staging_players_table_drop, staging_players_games_data_table_drop, staging_bots_table_drop,  gameTypes_table_drop, games_table_drop, results_table_drop, players_table_drop, playerTypes_table_drop, speed_table_drop]
+create_table_queries = [staging_games2019_data_table_create, staging_players_games_table_create, staging_bots_table_create, staging_players_table_create, results_table_create, games_table_create, player_table_create, playerTypes_table_create, gameTypes_table_create, speed_table_create]
 copy_table_queries = [staging_games2019_data_copy, staging_players_games_data_copy, staging_bots_table_copy, staging_players_copy]
 staging_data_quality_checks = [DataQualityCheck1, DataQualityCheck2, DataQualityCheck3, DataQualityCheck4]
-insert_table_queries = [insert_playerTypes, games_table_staging_insert, insert_results, gameType_table_insert, insert_bots, insert_players_data, games_table_insert]
+insert_table_queries = [insert_playerTypes, games_table_staging_insert, insert_results, gameType_table_insert, insert_bots, insert_players_data, games_table_insert, speed_table_insert]
 insert_data_quality_check = DataQualityCheck5

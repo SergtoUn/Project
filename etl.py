@@ -47,7 +47,7 @@ def staging_quality_checks(cur, conn):
         for query in staging_data_quality_checks:
             cur.execute(query)
             conn.commit()
-            dq_results.insert(i, cur.fetchall())
+            dq_results.insert(i, cur.fetchall()[0][0])
             i = i + 1
         
         false_count = Counter(dq_results)[False]
@@ -84,7 +84,7 @@ def insert_tables(cur, conn):
 
 def insert_quality_check(cur, conn):
     '''
-        Description: This function can be used to insert the data into the production tables of the warehouse from the staging tables.
+        Description: This function can be used to check the quality of data.
         
         Arguments:
             cur: cursor

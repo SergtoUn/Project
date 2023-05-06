@@ -24,6 +24,10 @@ For this project, the following datasets were used:
 >- a small dataset with the data about all Lichess bot players. The data is received from Lichess API.<br>
 >Testing subsets are available at **s3://chess-games-bucket/**. The project has been tested on the data from this bucket.
 
+### Data Quantity of the Primary Dataset
+
+The primary dataset for this project is https://www.kaggle.com/datasets/timhanewich/5-million-chess-game-results-november-2019. It's data were loaded into the stage table **staging_games2019_data**, it contains 5000995 records
+ ![dataset!](dataset.png "dataset")
 
 ## Stage tables
 <p>The stage tables are created to load the data from S3 to Amazon Redshift. All the data is loaded via SQL COPY statement based on the parameters provided. </p>
@@ -36,9 +40,10 @@ The following stage tables are created:
 ## Fact and Dimension Tables
 The analytics idea of the project is to understand the progress of the games in games. So far, the fact table is **games**, and it contains all the information about the games played by a certain player both from the Kaggle dataset and from the datasets created from API responses.
 The following **dimension** tables have been created: 
-1. **variants** - this table possesses variants of games with the corresponding codes used in the fact table. 17 game types (variants) are tracked there;
+1. **variants** - this table possesses variants of games with the corresponding codes used in the fact table. 14 game types (variants) are tracked there;
 2. **results** - it has just 3 definite results - "white win", "black win" and "draw" (with stalemate also regarded as draw) - and the codes for them;
-3. **players** - this table contains data about the players, including his/her first and last names, bio information which is optional, url of the data, player's country and location, whether the account is disabled or not, player's title, violation of TOS, all the ratings and player type (to track whether the player is a bot).
+3. **speed** - this table possesses variants of time controls with the corresponding codes used in the fact table. 6 time controls are tracked there;
+4. **players** - this table contains data about the players, including his/her first and last names, bio information which is optional, url of the data, player's country and location, whether the account is disabled or not, player's title, violation of TOS, all the ratings and player type (to track whether the player is a bot).
 
 ## The structure of the project
 
@@ -50,7 +55,8 @@ The project consisits of the following files:
 5. **get_data.py** - this file was used prior to all the work with the project. Its main idea is to create the staging tables in S3. Generally these tables were created from API responses;
 6. **log_setup.py** - this small file is used only to set the logging parameters;
 7. **dwh.cfg** - config file that contains the necessary information to connect with  S3, create the cluster, get permissions and roles etc.
-8. logfile.log - this file is not included in GitHub version of the project. The file is used to log all the information during project's execution.
+8. **update_data.py** - the file run periodically in order to update the data. It requires changes in EPOCH_DATE set 
+9. logfile.log - this file is not included in GitHub version of the project. The file is used to log all the information during project's execution.
 
 ## Steps to run
 
@@ -65,6 +71,13 @@ Project steps:
 4. run *etl.py* to copy data to staging tables and to insert data into data warehouse;
 5. Run *clean_up_resources.py* to clean up the resources upon completion.
 
+### The testing query to show the result of the data model
+
+The following query is supposed to demonstrate the testingquery and its results to be used in the analysis
+![wins!](wins.png "wins")
+The same fact table with the dimensions joined:
+![dimensions!](dimensions.png "dimensions")
+
 ## Data Quality Checks
 
 In order to test correctness of the data quality the following checks are performed:
@@ -74,7 +87,7 @@ In order to test correctness of the data quality the following checks are perfor
 4. Check if the staging table **staging_bots** contains any data;
 5. Check if the data input in the **games** table is within the presupposed ranges.
 
-## Logaical Approach to Work with Potential Challenges
+## Logical Approach to Work with Potential Challenges
 
 1. **The data was increased by 100x**. Unlike traditional databases, Redshift is designed to scale out by adding nodes to the cluster. Optimization comes from distribution styles of the columns over the clusters. So far, the following styles provide optimized performance:
    - besides the primary Kaggle dataset, all other data about games come from API calls. Chess games are approximately evenly distributed over the months, so the distribution key for the **games** is month;
@@ -82,7 +95,17 @@ In order to test correctness of the data quality the following checks are perfor
    - small tables that take part in most of the processing - **variants** and **results** - are copied over the clusters with distribution style **ALL**.
 2.  **The pipelines would be run on a daily basis by 7 am every day**. The project itself does not sort whether the data has been updated or daily we run all the same. Yet this can be sort out for **games** and **players** tables by either way, and the best solution is to be decided by the user:
    - create its temporary duplicate; add data from the datasets to the existing staging table; update the temporary table with just the newly received data; remove all the data from the staging table and put the one from the temporary one. After it the data to the DWH is updates as per the dates of the games (just the newly played games ar added). This approach requires solid amount of space exploited by AWS Redshift, because just a monthly data can cross 30Gb amount. Thus making duplicates can be pricey. Also the datasets are created via API calls, and getting most of the data that is already in the database takes enourmous and increasing amounts of time worthless;
-   - daily the "folders" with datasets are updated, and with all the previous data removed and only newly received data left. So far it does not require significant changes in the DWH. Yet the get_data.py file needs to be  updated daily to receive just new games.
+   - daily the "folders" with datasets are updated, and with all the previous data removed and only newly received data left. So far it does not require significant changes in the DWH. Yet the get_data.py file needs to be updated daily to receive just new games.
+   > This second variant requires the following steps set up:
+   a. *Deletion of data*. Can be performed by setting lifecycle configuration for the elements. It can consider the data management policies regarding both data transition an data removal. Further information on this topic is available here: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html;
+   b. *Source updates*. The file to update the sources is update_data.py. It loads the data from lichess API to the corresponding "folders" inside the S3 bucket. The file is supposed to be started every Monday by the cron/job; 
+   c. *ETL from S3 to DWH*. It is performed by etl.py file inside the project. It should be run as per the cron schedule as well;
+   d. *Crontab*. Crontab is the file with the purpose to plan the execution of the task. The syntax to run the task, say, every Monday 7AM is '```console
+   0 7 * * 1
+   ```'
+
 3. **The database needed to be accessed by 100+ people.** This issue is not the limit in AWS Redshift as a cloud-based DWH. Concurrency scaling with up to 10 concurrency scaling clusters is available. Yet time- and resource-consuming activities like data updates are recommended to be performed during the time of minimum user activities. Also it is recommended to organize the users into the user groups.
    Recent limits of AWS Redshift are available here: http://docs.aws.amazon.com/redshift/latest/mgmt/amazon-redshift-limits.html
+
+
 

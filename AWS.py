@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 # Configuration and global variables
 
 config = configparser.ConfigParser()
-config.read_file(open('dwh.cfg'))
+config.read_file(open('C:/Users/Sergt/Udacity/Data Engineering/FreeProject/Project/dwh.cfg'))
 
 KEY                    = config.get('AWS','KEY')
 SECRET                 = config.get('AWS','SECRET')
