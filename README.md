@@ -100,9 +100,8 @@ In order to test correctness of the data quality the following checks are perfor
    a. *Deletion of data*. Can be performed by setting lifecycle configuration for the elements. It can consider the data management policies regarding both data transition an data removal. Further information on this topic is available here: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html;
    b. *Source updates*. The file to update the sources is update_data.py. It loads the data from lichess API to the corresponding "folders" inside the S3 bucket. The file is supposed to be started every Monday by the cron/job; 
    c. *ETL from S3 to DWH*. It is performed by etl.py file inside the project. It should be run as per the cron schedule as well;
-   d. *Crontab*. Crontab is the file with the purpose to plan the execution of the task. The syntax to run the task, say, every Monday 7AM is '```console
-   0 7 * * 1
-   ```'
+   d. *Crontab*. Crontab is the file with the purpose to plan the execution of the task. The syntax to run the task, say, every Monday 7AM is 
+   `0 7 * * 1`
 
 3. **The database needed to be accessed by 100+ people.** This issue is not the limit in AWS Redshift as a cloud-based DWH. Concurrency scaling with up to 10 concurrency scaling clusters is available. Yet time- and resource-consuming activities like data updates are recommended to be performed during the time of minimum user activities. Also it is recommended to organize the users into the user groups.
    Recent limits of AWS Redshift are available here: http://docs.aws.amazon.com/redshift/latest/mgmt/amazon-redshift-limits.html
